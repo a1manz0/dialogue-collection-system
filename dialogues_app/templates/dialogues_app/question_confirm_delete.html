@@ -1,0 +1,41 @@
+{% extends 'dialogues_app/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Подтверждение удаления диалога</h5>
+                
+                <div class="alert alert-warning">
+                    <p class="mb-0">Вы уверены, что хотите удалить этот диалог?</p>
+                </div>
+
+                <div class="dialogue-example mb-4">
+                    <pre class="dialogue-text" style="white-space: pre-wrap; font-family: inherit;">{{ object.dialogue_example }}</pre>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">Удалить</button>
+                        <a href="{% url 'question_list' %}" class="btn btn-secondary">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dialogue-example {
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    padding: 1rem;
+}
+.dialogue-text {
+    margin: 0;
+    color: #212529;
+}
+</style>
+{% endblock %}

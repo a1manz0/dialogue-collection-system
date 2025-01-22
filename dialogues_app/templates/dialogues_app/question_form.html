@@ -1,0 +1,316 @@
+{# dialogues_app/templates/dialogues_app/question_form.html #}
+{% extends 'dialogues_app/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Новый диалог</h5>
+
+                <form method="post" id="dialogueForm" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Тема</label>
+                        {{ form.topic }}
+                        {% if form.topic.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.topic.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.requires_crm }}
+                            <label class="form-check-label" for="{{ form.requires_crm.id_for_label }}">
+                                Требуется доступ к CRM
+                            </label>
+                        </div>
+                    </div>
+
+                    {{ form.dialogue_example }}
+
+                    {% if form.dialogue_example.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.dialogue_example.errors }}
+                    </div>
+                    {% endif %}
+
+                    <div id="messagesContainer" class="mb-4">
+                        <!-- Здесь будут сообщения -->
+                    </div>
+
+                    <div class="d-flex gap-2 mb-4">
+                        <button type="button" class="btn btn-outline-primary" id="addUserMessage">
+                            <i class="bi bi-person"></i> Добавить сообщение клиента
+                        </button>
+                        <button type="button" class="btn btn-outline-success" id="addAssistantMessage">
+                            <i class="bi bi-headset"></i> Добавить ответ менеджера
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Сохранить диалог</button>
+                        <a href="{% url 'question_list'  %}" class="btn btn-secondary">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.message-container {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.message-content {
+    flex-grow: 1;
+    position: relative;
+    width: 100%;
+}
+
+.message {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+    max-width: 90%;
+    padding-right: 40px;
+}
+
+.user-message {
+    background-color: #cfe2ff;
+    margin-right: auto;
+}
+
+.user-icon {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+.assistant-message {
+    background-color: #d4edda;
+    margin-left: auto;
+}
+
+.assistant-icon {
+    background-color: #d4edda;
+    color: #0f5132;
+}
+
+.message-actions {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+}
+
+.delete-message {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: #dc3545;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    font-size: 1.2rem;
+}
+
+.delete-message:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+textarea {
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    min-height: 60px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.message-icon {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    min-width: 90px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.form-check {
+    padding-left: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-check-input {
+    margin-left: 0;
+    float: none;
+}
+
+.form-check-label {
+    cursor: pointer;
+}
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('messagesContainer');
+        const form = document.getElementById('dialogueForm');
+        const dialogueInput = document.querySelector('input[name="dialogue_example"]');
+        const topicSelect = document.querySelector('select[name="topic"]');
+    
+        function restoreMessages() {
+            const savedDialogue = dialogueInput.value;
+            if (savedDialogue) {
+                let currentMessage = '';
+                let currentType = '';
+                
+                savedDialogue.split('\n').forEach(line => {
+                    if (line.startsWith('Клиент:') || line.startsWith('User:')) {
+                        if (currentMessage && currentType) {
+                            appendMessage(currentType, currentMessage.trim());
+                        }
+                        currentType = 'user';
+                        currentMessage = line.replace(/^(Клиент:|User:)/, '');
+                    } else if (line.startsWith('Менеджер:') || line.startsWith('Ассистент:') || line.startsWith('Assistant:')) {
+                        if (currentMessage && currentType) {
+                            appendMessage(currentType, currentMessage.trim());
+                        }
+                        currentType = 'assistant';
+                        currentMessage = line.replace(/^(Менеджер:|Ассистент:|Assistant:)/, '');
+                    } else {
+                        // Если это не новое сообщение, добавляем строку к текущему
+                        currentMessage += '\n' + line;
+                    }
+                });
+                
+                // Добавляем последнее сообщение
+                if (currentMessage && currentType) {
+                    appendMessage(currentType, currentMessage.trim());
+                }
+            }
+        }
+    
+        function createMessage(type, content = '') {
+            const div = document.createElement('div');
+            div.className = 'message-container';
+            
+            const icon = document.createElement('div');
+            icon.className = `message-icon ${type}-icon`;
+            icon.textContent = type === 'user' ? 'Клиент' : 'Менеджер';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            const textarea = document.createElement('textarea');
+            textarea.className = `message ${type}-message`;
+            textarea.placeholder = type === 'user' ? 'Сообщение клиента...' : 'Ответ менеджера...';
+            textarea.value = content;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-message';
+            deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            deleteBtn.title = 'Удалить сообщение';
+            deleteBtn.onclick = function() {
+                div.remove();
+                updateDialogueInput();
+            };
+            
+            contentDiv.appendChild(textarea);
+            contentDiv.appendChild(deleteBtn);
+            div.appendChild(icon);
+            div.appendChild(contentDiv);
+            
+            textarea.addEventListener('input', updateDialogueInput);
+            
+            return div;
+        }
+    
+        function appendMessage(type, content = '') {
+            container.appendChild(createMessage(type, content));
+        }
+    
+        function updateDialogueInput() {
+            const messages = [];
+            container.querySelectorAll('.message-container').forEach(messageDiv => {
+                const textarea = messageDiv.querySelector('textarea');
+                const isUser = textarea.classList.contains('user-message');
+                const text = textarea.value.trim();
+                if (text) {
+                    // Сохраняем переносы строк в сообщении
+                    messages.push(`${isUser ? 'Клиент:' : 'Менеджер:'} ${text}`);
+                }
+            });
+            dialogueInput.value = messages.join('\n\n'); // Добавляем пустую строку между сообщениями
+        }
+    
+        document.getElementById('addUserMessage').onclick = () => {
+            appendMessage('user');
+        };
+    
+        document.getElementById('addAssistantMessage').onclick = () => {
+            appendMessage('assistant');
+        };
+    
+        form.onsubmit = function(e) {
+            let hasErrors = false;
+            
+            // Удаляем все предыдущие сообщения об ошибках
+            const existingErrors = document.querySelectorAll('.alert-danger');
+            existingErrors.forEach(error => error.remove());
+            
+            // Проверка выбора темы
+            if (!topicSelect.value) {
+                topicSelect.classList.add('is-invalid');
+                if (!topicSelect.nextElementSibling || !topicSelect.nextElementSibling.classList.contains('invalid-feedback')) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'invalid-feedback d-block';
+                    errorDiv.textContent = 'Пожалуйста, выберите тему';
+                    topicSelect.parentNode.appendChild(errorDiv);
+                }
+                hasErrors = true;
+            } else {
+                topicSelect.classList.remove('is-invalid');
+                const errorDiv = topicSelect.nextElementSibling;
+                if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+                    errorDiv.remove();
+                }
+            }
+    
+            // Проверка наличия сообщений
+            if (!dialogueInput.value) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger mt-3';
+                errorDiv.textContent = 'Добавьте хотя бы одно сообщение в диалог';
+                container.insertAdjacentElement('beforebegin', errorDiv);
+                hasErrors = true;
+            }
+    
+            if (hasErrors) {
+                e.preventDefault();
+            }
+        };
+    
+        // Восстанавливаем сообщения при загрузке страницы
+        restoreMessages();
+    });
+    </script>
+    {% endblock %}

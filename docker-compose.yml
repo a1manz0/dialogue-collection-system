@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  qa_web:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DEBUG=0
+      - DJANGO_ALLOWED_HOSTS=*
+    volumes:
+      - .:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn --bind 0.0.0.0:3000 --workers 3 --timeout 120 dialogue_system.wsgi:application"
