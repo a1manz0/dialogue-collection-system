@@ -21,20 +21,20 @@
 ## Установка и запуск
 
 1. Клонируйте репозиторий:
-\`\`\`bash
+```bash
 git clone https://github.com/a1manz0/dialogue-collection-system.git
 cd dialogue-collection-system
-\`\`\`
+```
 
 2. Запустите через Docker Compose:
-\`\`\`bash
+```bash
 docker-compose up -d --build
-\`\`\`
+```
 
 3. Создайте суперпользователя:
-\`\`\`bash
+```bash
 docker-compose exec qa_web python manage.py createsuperuser
-\`\`\`
+```
 
 4. Приложение будет доступно по адресу: http://localhost:3000
 
@@ -49,39 +49,39 @@ docker-compose exec qa_web python manage.py createsuperuser
 ## Формат данных
 
 Диалоги хранятся в формате:
-\`\`\`
+```
 Клиент: [сообщение клиента]
 Менеджер: [ответ менеджера]
 Клиент: [следующее сообщение клиента]
 Менеджер: [следующий ответ менеджера]
-\`\`\`
+```
 
 ## Разработка
 
 Для локальной разработки:
 
 1. Создайте виртуальное окружение:
-\`\`\`bash
+```bash
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # или
 venv\Scripts\activate  # Windows
-\`\`\`
+```
 
 2. Установите зависимости:
-\`\`\`bash
+```bash
 pip install -r requirements.txt
-\`\`\`
+```
 
 3. Примените миграции:
-\`\`\`bash
+```bash
 python manage.py migrate
-\`\`\`
+```
 
 4. Запустите сервер разработки:
-\`\`\`bash
+```bash
 python manage.py runserver
-\`\`\`
+```
 
 ## Лицензия
 
