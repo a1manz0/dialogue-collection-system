@@ -11,9 +11,14 @@ import csv
 
 class DialogueListView(LoginRequiredMixin, ListView):
     model = Dialogue
-    template_name = 'dialogues_app/dialogue_list.html'  # пока оставим старый шаблон
+    template_name = 'dialogues_app/dialogue_list.html'
     context_object_name = 'dialogues'
     paginate_by = 10
+
+    def get_queryset(self):
+        return (Dialogue.objects.select_related('created_by')
+                .prefetch_related('messages')
+                .order_by('-created_at'))
 
 class DialogueCreateView(LoginRequiredMixin, CreateView):
     model = Dialogue
