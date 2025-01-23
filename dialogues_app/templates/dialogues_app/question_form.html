@@ -8,6 +8,19 @@
             <div class="card-body">
                 <h5 class="card-title mb-4">Новый диалог</h5>
 
+                <!-- Добавляем блок с инструкцией -->
+                <div class="alert alert-info mb-4">
+                    <h6 class="alert-heading mb-3"><i class="bi bi-info-circle"></i> Как заполнить диалог:</h6>
+                    <ol class="mb-0">
+                        <li>Выберите тему диалога из списка</li>
+                        <li>Если диалог требует проверки в CRM, отметьте соответствующий флажок</li>
+                        <li>Используйте кнопки "Добавить сообщение клиента" и "Добавить ответ менеджера" для создания диалога</li>
+                        <li>Каждое сообщение можно редактировать и удалять</li>
+                        <li>Сообщения клиента отображаются синим цветом, ответы менеджера - зеленым</li>
+                        <li>В сообщениях поддерживаются переносы строк</li>
+                    </ol>
+                </div>
+
                 <form method="post" id="dialogueForm" novalidate>
                     {% csrf_token %}
                     
@@ -168,6 +181,13 @@ textarea {
 .form-check-label {
     cursor: pointer;
 }
+
+.message textarea {
+    font-size: 12px !important;  /* Добавляем !important */
+    line-height: 1.5;  /* Межстрочный интервал */
+    padding: 10px;  /* Отступы внутри текстового поля */
+}
+
 </style>
 
 <script>
