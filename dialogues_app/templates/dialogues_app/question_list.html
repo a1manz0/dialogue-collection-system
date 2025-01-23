@@ -3,10 +3,19 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12">
-        <div class="mb-4">
+        <div class="mb-4 d-flex gap-2">
             <a href="{% url 'question_create' %}" class="btn btn-primary">
-                Добавить новый диалог
+                <i class="bi bi-plus-circle"></i> Добавить новый диалог
             </a>
+            <div class="dropdown">
+                <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download"></i> Выгрузить датасет
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                    <li><a class="dropdown-item" href="{% url 'export_json' %}">JSON формат</a></li>
+                    <li><a class="dropdown-item" href="{% url 'export_csv' %}">CSV формат</a></li>
+                </ul>
+            </div>
         </div>
 
         {% if questions %}

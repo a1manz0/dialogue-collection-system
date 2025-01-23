@@ -6,4 +6,6 @@ urlpatterns = [
     path('create/', views.QuestionCreateView.as_view(), name='question_create'),
     path('edit/<int:pk>/', views.QuestionUpdateView.as_view(), name='question_update'),
     path('delete/<int:pk>/', views.QuestionDeleteView.as_view(), name='question_delete'),  # новый URL    
+    path('export/json/', views.export_json, name='export_json'),
+    path('export/csv/', views.export_csv, name='export_csv'),
 ] 
