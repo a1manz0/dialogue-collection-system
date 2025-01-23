@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
-class ClientQuestion(models.Model):
+class Dialogue(models.Model):
     TOPIC_CHOICES = [
         ('course_info', 'Информация о курсах'),
         ('pricing', 'Стоимость обучения'),
@@ -13,50 +13,35 @@ class ClientQuestion(models.Model):
         ('other', 'Другое'),
     ]
 
-    COMPLEXITY_CHOICES = [
-        ('simple', 'Простой вопрос'),
-        ('crm', 'Требуется проверка в CRM'),
-        ('complex', 'Сложный вопрос'),
-    ]
+    topic = models.CharField('Тема', max_length=50, choices=TOPIC_CHOICES)
+    requires_crm = models.BooleanField('Требуется доступ к CRM', default=False)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Создал')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    dialogue_example = models.TextField(
-        verbose_name="Пример диалога",
-        help_text="Введите пример диалога в формате:\nКлиент: [сообщение]\nМенеджер: [ответ]\n...",
-        default=""
-    )
-    topic = models.CharField(
-        max_length=20,
-        choices=TOPIC_CHOICES,
-        verbose_name="Тема диалога"
-    )
-    complexity = models.CharField(
-        max_length=20,
-        choices=COMPLEXITY_CHOICES,
-        verbose_name="Сложность ответа"
-    )
-    requires_crm = models.BooleanField(
-        default=False,
-        verbose_name="Требуется проверка в CRM"
-    )
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='created_questions'
-    )
-    tags = models.CharField(
-        max_length=200,
-        blank=True,
-        verbose_name="Теги",
-        help_text="Разделяйте теги запятыми"
-    )
-    
     class Meta:
-        verbose_name = "Вопрос клиента"
-        verbose_name_plural = "Вопросы клиентов"
+        verbose_name = 'Диалог'
+        verbose_name_plural = 'Диалоги'
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.get_topic_display()} - {self.question[:50]}..." 
+        return f'Диалог {self.id} - {self.get_topic_display()}'
+
+
+class Message(models.Model):
+    AUTHOR_CHOICES = [
+        ('user', 'Клиент'),
+        ('assistant', 'Менеджер'),
+    ]
+
+    dialogue = models.ForeignKey(Dialogue, on_delete=models.CASCADE, related_name='messages')
+    author = models.CharField('Автор', max_length=20, choices=AUTHOR_CHOICES)
+    text = models.TextField('Текст сообщения')
+    created_at = models.DateTimeField('Время создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Сообщение'
+        verbose_name_plural = 'Сообщения'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.get_author_display()}: {self.text[:50]}...' 

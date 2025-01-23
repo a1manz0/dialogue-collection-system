@@ -1,7 +1,12 @@
-{# dialogues_app/templates/dialogues_app/question_form.html #}
+{# dialogues_app/templates/dialogues_app/dialogue_form.html #}
 {% extends 'dialogues_app/base.html' %}
 
 {% block content %}
+<!-- Добавьте эти строки в самом начале блока content -->
+<div style="display:none">
+    <pre>Debug initial_messages: {{ initial_messages }}</pre>
+    <pre>Debug object messages: {% for msg in object.messages.all %}{{ msg.author }}: {{ msg.text }}{% endfor %}</pre>
+</div>
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card">
@@ -23,6 +28,9 @@
 
                 <form method="post" id="dialogueForm" novalidate>
                     {% csrf_token %}
+                    {% if initial_messages %}
+                    {{ initial_messages|safe|json_script:"initial-messages" }}
+                    {% endif %}
                     
                     <div class="mb-3">
                         <label class="form-label">Тема</label>
@@ -66,7 +74,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Сохранить диалог</button>
-                        <a href="{% url 'question_list'  %}" class="btn btn-secondary">Отмена</a>
+                        <a href="{% url 'dialogue_list'  %}" class="btn btn-secondary">Отмена</a>
                     </div>
                 </form>
             </div>
@@ -167,18 +175,21 @@ textarea {
 }
 
 .form-check {
-    padding-left: 0;
+    padding-left: 1rem;
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    margin-left: 0.75rem;
 }
 
 .form-check-input {
-    margin-left: 0;
+    margin: 0;
     float: none;
 }
 
 .form-check-label {
+    margin-bottom: 0;
     cursor: pointer;
 }
 
@@ -191,146 +202,118 @@ textarea {
 </style>
 
 <script>
+    {% if initial_messages %}
+        const initialMessages = {{ initial_messages|safe }};
+    {% else %}
+        const initialMessages = [];
+    {% endif %}
+</script>
+
+<script>
     document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('messagesContainer');
         const form = document.getElementById('dialogueForm');
-        const dialogueInput = document.querySelector('input[name="dialogue_example"]');
-        const topicSelect = document.querySelector('select[name="topic"]');
-    
-        function restoreMessages() {
-            const savedDialogue = dialogueInput.value;
-            if (savedDialogue) {
-                let currentMessage = '';
-                let currentType = '';
-                
-                savedDialogue.split('\n').forEach(line => {
-                    if (line.startsWith('Клиент:') || line.startsWith('User:')) {
-                        if (currentMessage && currentType) {
-                            appendMessage(currentType, currentMessage.trim());
-                        }
-                        currentType = 'user';
-                        currentMessage = line.replace(/^(Клиент:|User:)/, '');
-                    } else if (line.startsWith('Менеджер:') || line.startsWith('Ассистент:') || line.startsWith('Assistant:')) {
-                        if (currentMessage && currentType) {
-                            appendMessage(currentType, currentMessage.trim());
-                        }
-                        currentType = 'assistant';
-                        currentMessage = line.replace(/^(Менеджер:|Ассистент:|Assistant:)/, '');
-                    } else {
-                        // Если это не новое сообщение, добавляем строку к текущему
-                        currentMessage += '\n' + line;
-                    }
-                });
-                
-                // Добавляем последнее сообщение
-                if (currentMessage && currentType) {
-                    appendMessage(currentType, currentMessage.trim());
-                }
-            }
-        }
-    
+        
+        // Функция создания сообщения
         function createMessage(type, content = '') {
-            const div = document.createElement('div');
-            div.className = 'message-container';
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'message-container';
             
+            // Создаем иконку (Клиент/Менеджер)
             const icon = document.createElement('div');
             icon.className = `message-icon ${type}-icon`;
             icon.textContent = type === 'user' ? 'Клиент' : 'Менеджер';
             
+            // Создаем контейнер для контента
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             
+            // Создаем текстовое поле
             const textarea = document.createElement('textarea');
             textarea.className = `message ${type}-message`;
+            textarea.value = content || '';
             textarea.placeholder = type === 'user' ? 'Сообщение клиента...' : 'Ответ менеджера...';
-            textarea.value = content;
             
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-message';
-            deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-            deleteBtn.title = 'Удалить сообщение';
-            deleteBtn.onclick = function() {
-                div.remove();
-                updateDialogueInput();
+            // Создаем кнопку удаления
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-message';
+            deleteButton.title = 'Удалить сообщение';
+            deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+            deleteButton.onclick = () => {
+                messageContainer.remove();
+                updateFormData();
             };
             
+            // Собираем все вместе
             contentDiv.appendChild(textarea);
-            contentDiv.appendChild(deleteBtn);
-            div.appendChild(icon);
-            div.appendChild(contentDiv);
+            contentDiv.appendChild(deleteButton);
+            messageContainer.appendChild(icon);
+            messageContainer.appendChild(contentDiv);
             
-            textarea.addEventListener('input', updateDialogueInput);
+            // Добавляем обработчик изменений
+            textarea.addEventListener('input', updateFormData);
             
-            return div;
+            return messageContainer;
         }
-    
+        
+        // Функция добавления сообщения
         function appendMessage(type, content = '') {
-            container.appendChild(createMessage(type, content));
+            const message = createMessage(type, content);
+            container.appendChild(message);
+            updateFormData();
         }
-    
-        function updateDialogueInput() {
+        
+        // Функция обновления данных формы
+        function updateFormData() {
             const messages = [];
             container.querySelectorAll('.message-container').forEach(messageDiv => {
                 const textarea = messageDiv.querySelector('textarea');
                 const isUser = textarea.classList.contains('user-message');
                 const text = textarea.value.trim();
                 if (text) {
-                    // Сохраняем переносы строк в сообщении
-                    messages.push(`${isUser ? 'Клиент:' : 'Менеджер:'} ${text}`);
+                    messages.push({
+                        author: isUser ? 'user' : 'assistant',
+                        text: text
+                    });
                 }
             });
-            dialogueInput.value = messages.join('\n\n'); // Добавляем пустую строку между сообщениями
+            
+            // Обновляем скрытое поле
+            let messagesInput = form.querySelector('input[name="messages"]');
+            if (!messagesInput) {
+                messagesInput = document.createElement('input');
+                messagesInput.type = 'hidden';
+                messagesInput.name = 'messages';
+                form.appendChild(messagesInput);
+            }
+            messagesInput.value = JSON.stringify(messages);
         }
-    
-        document.getElementById('addUserMessage').onclick = () => {
-            appendMessage('user');
-        };
-    
-        document.getElementById('addAssistantMessage').onclick = () => {
-            appendMessage('assistant');
-        };
-    
-        form.onsubmit = function(e) {
-            let hasErrors = false;
-            
-            // Удаляем все предыдущие сообщения об ошибках
-            const existingErrors = document.querySelectorAll('.alert-danger');
-            existingErrors.forEach(error => error.remove());
-            
-            // Проверка выбора темы
-            if (!topicSelect.value) {
-                topicSelect.classList.add('is-invalid');
-                if (!topicSelect.nextElementSibling || !topicSelect.nextElementSibling.classList.contains('invalid-feedback')) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'invalid-feedback d-block';
-                    errorDiv.textContent = 'Пожалуйста, выберите тему';
-                    topicSelect.parentNode.appendChild(errorDiv);
-                }
-                hasErrors = true;
+        
+        // Восстановление сообщений при редактировании
+        function restoreMessages() {
+            console.log('Starting restore messages');
+            if (initialMessages && initialMessages.length > 0) {
+                console.log('Found messages to restore:', initialMessages);
+                // Очищаем контейнер
+                container.innerHTML = '';
+                // Добавляем каждое сообщение
+                initialMessages.forEach(msg => {
+                    console.log('Adding message:', msg);
+                    appendMessage(msg.author, msg.text);
+                });
+                // Обновляем скрытое поле формы
+                updateFormData();
             } else {
-                topicSelect.classList.remove('is-invalid');
-                const errorDiv = topicSelect.nextElementSibling;
-                if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
-                    errorDiv.remove();
-                }
+                console.log('No messages to restore');
             }
-    
-            // Проверка наличия сообщений
-            if (!dialogueInput.value) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'alert alert-danger mt-3';
-                errorDiv.textContent = 'Добавьте хотя бы одно сообщение в диалог';
-                container.insertAdjacentElement('beforebegin', errorDiv);
-                hasErrors = true;
-            }
-    
-            if (hasErrors) {
-                e.preventDefault();
-            }
-        };
-    
-        // Восстанавливаем сообщения при загрузке страницы
+        }
+        
+        // Добавляем обработчики кнопок
+        document.getElementById('addUserMessage').onclick = () => appendMessage('user');
+        document.getElementById('addAssistantMessage').onclick = () => appendMessage('assistant');
+        
+        // Вызываем восстановление сообщений при загрузке
         restoreMessages();
     });
-    </script>
-    {% endblock %}
+</script>
+{% endblock %}
